@@ -6,6 +6,7 @@
 
   vars:
     REPO: "{{ harvester_installer_repo_name | default('harvester/harvester-installer') }}"
+    WORKSPACE: /home/jenkins/harvester-installer
 
   tasks:
     - name: Make sure WORKSPACE is defined
