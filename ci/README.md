@@ -47,7 +47,7 @@ You can install the latest version of [Ansible] via [Python PIP].
 To run the job locally:
 
 1. Checkout the pull request branch.
-2. `ansible-playbook -e WORKSPACE=<harvester-installer parent dir> -e PR_ID=<pull request ID> run_vagrant_install_test.yml`
+2. `ansible-playbook -e WORKSPACE=<harvester-installer parent dir> -e PR_ID=<pull request ID> ./ci/run_vagrant_install_test.yml`
 
 
 [Ansible]: https://www.ansible.com/
