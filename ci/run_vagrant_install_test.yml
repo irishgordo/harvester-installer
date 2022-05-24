@@ -53,8 +53,12 @@
 
     - name: Clone ipxe-examples repo
       git:
-        repo: https://github.com/harvester/ipxe-examples.git
+        repo: https://github.com/irishgordo/ipxe-examples.git
         dest: "{{ WORKSPACE }}/ipxe-examples"
+    
+    - name: Checkout branch ipxe needed
+      shell: >
+        cd /home/jenkins/harvester-installer && git checkout feat/2096-iteration-extra-explore-branch && cd /home/jenkins
 
     - name: Check to see if "/usr/share/qemu/OVMF.fd" exist
       stat:
