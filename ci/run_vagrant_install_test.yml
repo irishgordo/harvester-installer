@@ -33,27 +33,30 @@
       register: shell_result
       until: shell_result.rc == 0
 
-    - name: Check for existing environment
-      stat:
-        path: "{{ WORKSPACE }}/ipxe-examples"
-      register: check_ipxe_examples_result
+    # - name: Check for existing environment
+    #   stat:
+    #     path: "{{ WORKSPACE }}/ipxe-examples"
+    #   register: check_ipxe_examples_result
 
-    - name: Cleanup vagrants
-      shell: >
-        vagrant destroy -f
-      args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
-      when: check_ipxe_examples_result.stat.exists
+    # - name: Cleanup vagrants
+    #   shell: >
+    #     vagrant destroy -f
+    #   args:
+    #     chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+    #   when: check_ipxe_examples_result.stat.exists
 
-    - name: Cleanup ipxe-examples dir
-      file:
-        path: "{{ WORKSPACE }}/ipxe-examples"
-        state: absent
+    # - name: Cleanup ipxe-examples dir
+    #   file:
+    #     path: "{{ WORKSPACE }}/ipxe-examples"
+    #     state: absent
 
     - name: Clone ipxe-examples repo
       git:
-        repo: https://github.com/harvester/ipxe-examples.git
+        repo: https://github.com/irishgordo/ipxe-examples.git
         dest: "{{ WORKSPACE }}/ipxe-examples"
+    
+    - name: Checkout 2096 Branch
+      shell: cd {{ WORKSPACE }}/ipxe-examples && git checkout feat/2096-air-gapped-rancher-single-node-proof-of-concept
 
     - name: Check to see if "/usr/share/qemu/OVMF.fd" exist
       stat:
@@ -91,25 +94,34 @@
         regexp: "^harvester_rootfs_url:.*"
         replace: "harvester_rootfs_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-rootfs-amd64.squashfs"
 
+    - name: Copy Temp Inital Settings Overwriting
+      copy:
+        src: /tmp/inital_settings.yml
+        dest: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        force: yes
+
     - name: Run setup Harvester
       shell: >
         ./setup_harvester.sh
       register: setup_harvester_result
       args:
         chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
-      ignore_errors: yes
 
     - name: Print Harvester installation output
       debug:
         msg: "{{ setup_harvester_result.stdout_lines }}"
+      ignore_errors: yes
 
-    - name: Cleanup Harvester Vagrant VMs
-      shell: >
-        vagrant destroy -f
-      args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+    # - name: Cleanup Harvester Vagrant VMs
+    #   shell: >
+    #     vagrant destroy -f
+    #   args:
+    #     chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
 
+    # temporarily ignoring errors 
+    # warnings get put in stderr, when they are just "warnings" and not "errors"
     - name: Check result
       fail:
         msg: "ERROR: {{ setup_harvester_result.stderr }}"
       when: setup_harvester_result.failed
+      ignore_errors: yes
