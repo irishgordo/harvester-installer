@@ -1,4 +1,4 @@
-FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
+#FROM quay.io/costoolkit/releases-green:luet-toolchain-0.21.2 as luet
 FROM quay.io/costoolkit/releases-green:luet-makeiso-toolchain-0.4.0 as makeiso
 
 FROM registry.suse.com/bci/bci-base:15.3
@@ -33,7 +33,8 @@ RUN mkdir /usr/tmp && \
     mv /usr/tmp/helm /usr/bin/helm
 
 # luet & makeiso
-COPY --from=luet /usr/bin/luet /usr/bin/luet
+#COPY --from=luet /usr/bin/luet /usr/bin/luet
+COPY ./luet /usr/bin/luet
 COPY --from=makeiso /usr/bin/luet-makeiso /usr/bin/luet-makeiso
 
 ENV DAPPER_ENV REPO TAG DRONE_TAG DRONE_BRANCH CROSS

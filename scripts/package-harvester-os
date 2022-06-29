@@ -14,7 +14,7 @@ source ${SCRIPTS_DIR}/version-rancher
 source ${SCRIPTS_DIR}/version-harvester ${TOP_DIR}/../harvester
 source ${SCRIPTS_DIR}/version-monitoring
 
-BASE_OS_IMAGE="rancher/harvester-os:20220526"
+BASE_OS_IMAGE="rancher/harvester-os:20220630-7f54fc7-dirty"
 HARVESTER_OS_IMAGE=rancher/harvester-os:$VERSION
 
 cd ${PACKAGE_HARVESTER_OS_DIR}
@@ -34,7 +34,7 @@ EOF
 # Collect dependencies' versions
 ${SCRIPTS_DIR}/collect-deps.sh harvester-release.yaml
 
-docker build --pull \
+docker build \
 	--build-arg BASE_OS_IMAGE="${BASE_OS_IMAGE}" \
 	--build-arg HARVESTER_PRETTY_NAME="${PRETTY_NAME}" \
 	-t ${HARVESTER_OS_IMAGE} .
@@ -72,27 +72,27 @@ xorriso -osirrox on -indev ${ARTIFACTS_DIR}/${ISO_PREFIX}.iso -extract /rootfs.s
 
 # Write checksum
 cd ${ARTIFACTS_DIR}
-CHECKSUM_FILE=${ISO_PREFIX}.sha512
-sha512sum ${PROJECT_PREFIX}* > $CHECKSUM_FILE
+#CHECKSUM_FILE=${ISO_PREFIX}.sha512
+#sha512sum ${PROJECT_PREFIX}* > $CHECKSUM_FILE
 
-ISO_CHECKSUM=$(awk -viso_name="${ISO_PREFIX}.iso" '$2~iso_name{print $1}' $CHECKSUM_FILE)
-if [ -z "$ISO_CHECKSUM" ]; then
-  echo "Fail to find Harvester ISO file checksum."
-  exit 1
-fi
+#ISO_CHECKSUM=$(awk -viso_name="${ISO_PREFIX}.iso" '$2~iso_name{print $1}' $CHECKSUM_FILE)
+#if [ -z "$ISO_CHECKSUM" ]; then
+#  echo "Fail to find Harvester ISO file checksum."
+#  exit 1
+#fi
 
 # Write version.yaml
-if [[ -n "${DRONE_TAG}" ]]; then
-	RELEASE_DATE=$(date +'%Y%m%d')
-	cat > version.yaml <<EOF
-apiVersion: harvesterhci.io/v1beta1
-kind: Version
-metadata:
-  name: ${VERSION}
-  namespace: harvester-system
-spec:
-  isoChecksum: '${ISO_CHECKSUM}'
-  isoURL: https://releases.rancher.com/harvester/${VERSION}/${ISO_PREFIX}.iso
-  releaseDate: '${RELEASE_DATE}'
-EOF
-fi
+#if [[ -n "${DRONE_TAG}" ]]; then
+#	RELEASE_DATE=$(date +'%Y%m%d')
+#	cat > version.yaml <<EOF
+#apiVersion: harvesterhci.io/v1beta1
+#kind: Version
+#metadata:
+#  name: ${VERSION}
+#  namespace: harvester-system
+#spec:
+#  isoChecksum: '${ISO_CHECKSUM}'
+#  isoURL: https://releases.rancher.com/harvester/${VERSION}/${ISO_PREFIX}.iso
+#  releaseDate: '${RELEASE_DATE}'
+#EOF
+#fi
