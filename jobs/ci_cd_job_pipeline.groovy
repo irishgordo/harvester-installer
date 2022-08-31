@@ -1,16 +1,30 @@
-def MessageGitHubAboutStatus(name, summary, headSha, authToken, status, text){
-    sh '''
-    curl -X POST -H "Content-Type: application/json" \
-    -H "Accept: application/vnd.github+json" \
-    -H "authorization: Bearer ${authToken}" \
-    -d '{ "name": "'${name}'", \
-        "head_sha": "'${headSha}'", \
-        "status": "completed", \
-        "conclusion": "neutral", \
-        "output": { "title": "'${name}' for: '${headSha}'", \
-                    "summary": "'${summary}'", \
-                    "text": "'{text}'"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-    '''
+def TellGitHubToCreateACheck(String name = 'default', String summary = 'default', String status = 'completed', String conclusion = 'success', String text = 'default', String token = 'empty'){
+    try{
+        echo "this is name: ${name}"
+        echo "this is summary: ${summary}"
+        echo "this is status: ${status}"
+        echo "this is conclusion: ${conclusion}"
+        echo "this is text: ${text}"
+        commit = "${ghprbActualCommit}"
+        echo "this is commit: ${commit}"
+        def result = sh(script: '''
+        curl -X POST -H "Content-Type: application/json" \
+            -H "Accept: application/vnd.github+json" \
+            -H "authorization: Bearer ''' + token + '''" \
+            -d '{ "name": "''' + name + '''", \
+                "head_sha": "''' + commit + '''", \
+                "status": "''' + status +'''", \
+                "conclusion": "''' + conclusion + '''", \
+                "output": { "title": "''' + name + ''' for: ''' + commit + '''", \
+                            "summary": "''' + summary + '''", \
+                            "text": "''' + text + '''"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
+        ''', returnStdout: true)
+        echo "${result}"
+        return result
+    } catch(err) {
+        echo "'issue communicating with GitHub API...'"
+        echo err.getMessage()
+    }                                
 }
 
 pipeline {
@@ -24,26 +38,14 @@ pipeline {
     agent any
     stages {
         stage('checkin with github'){
-            // when{
-            //     anyOf{
-            //         expression{
-            //             return ghprbCommentBody?.trim()
-            //         }
-            //     }
-            // }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                                            usernameVariable: 'GITHUB_APP',
-                                            passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                    MessageGitHubAboutStatus("inital_ghub_check", "inital check", "'${ghprbActualCommit}'", "'${GITHUB_ACCESS_TOKEN}'", 'completed', 'completed inital check')
+                withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                    TellGitHubToCreateACheck('initalizing_github_checks_messaging', 'basic initialization of github checks api', 'completed', 'success', 'basic initalizaiton should be visible in github checks api', "${GITHUB_ACCESS_TOKEN}")                      
                 }
             }
         }
         stage('initalize'){
             steps {
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_ZA',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_ZA')]) {
                 script{
                     sh 'printenv' 
                     params.each {param ->
@@ -52,33 +54,10 @@ pipeline {
                     sh "echo 'Building..'"
                     sh "ls -alh"
                     sh "cd ${env.WORKSPACE} && rm -rfv tests"
-                    //publishChecks(name: 'InitializationCompleted', conclusion: 'success', summary: 'Initialization was successful...')
-                    // try{
-                    //     sh '''
-                    //     curl -X POST -H "Content-Type: application/json" \
-                    //         -H "Accept: application/vnd.github.antiope-preview+json" \
-                    //         -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_ZA}" \
-                    //         -d '{ "name": "initialization_stage", \
-                    //             "head_sha": "'${ghprbActualCommit}'", \
-                    //             "status": "completed", \
-                    //             "conclusion": "success", \
-                    //             "output": { "title": "Initialization Stage Completed for: '${ghprbActualCommit}'", \
-                    //                         "summary": "Initalization Stage Was Completed - cleaning and logging env for: '${env.WORKSPACE}'", \
-                    //                         "text": "initialization completed"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                    //     '''
-                    // } catch(err) {
-                    //     echo err.getMessage()
-                    // }
                 }
-                //}
-                // sh "echo 'initalizing, cleaning up workspace...'"
-                // cleanWs(cleanWhenNotBuilt: true,
-                //     deleteDirs: true,
-                //     disableDeferredWipeout: false,
-                //     notFailBuild: true,
-                //     patterns: [[pattern: '.gitignore', type: 'INCLUDE'],
-                //             [pattern: '.propsfile', type: 'EXCLUDE']])
-            
+                withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                    TellGitHubToCreateACheck('initialization_stage', 'basic initialization of pipeline', 'completed', 'success', 'basic initalizaiton of pipeline is successful...', "${GITHUB_ACCESS_TOKEN}")                      
+                }
             }
         }
         stage('Checkout harvester-install pull request') {
@@ -88,59 +67,28 @@ pipeline {
                              extensions: [[$class: 'LocalBranch']],
                              userRemoteConfigs: [[refspec: "+refs/pull/${ghprbPullId}/head:refs/remotes/origin/PR-${ghprbPullId}", url: "https://github.com/irishgordo/harvester-installer"]]])
                 }
-                script{
-                    sh "ls -alh"
-                    //publishChecks(name: 'AcquiredHarvesterInstaller', conclusion: 'success', summary: 'Acquired Harvester-Installer repo at pull request was successful...')
-                }
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_A',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_A')]) {
-                //         sh '''
-                //         curl -X POST -H "Content-Type: application/json" \
-                //             -H "Accept: application/vnd.github.antiope-preview+json" \
-                //             -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_A}" \
-                //             -d '{ "name": "checkout_harvester_installer_pr", \
-                //                 "head_sha": "'${ghprbActualCommit}'", \
-                //                 "status": "completed", \
-                //                 "conclusion": "success", \
-                //                 "output": { "title": "Checkout Harvester-Installer Stage Completed for: '${ghprbActualCommit}'", \
-                //                             "summary": "Harvester Installer Checkout Stage Was Completed - was able to fetch branches etc: '${env.WORKSPACE}'", \
-                //                             "text": "harvester-installer checkout completed"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                //         '''
-                // }
+                withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                    TellGitHubToCreateACheck('checkout_harvester_pull_request_stage', 'checking out harvester pull request stage', 'completed', 'success', "successfully fetched latest harvester-installer", "${GITHUB_ACCESS_TOKEN}")
+                }     
             }
         }
         stage('Pull inital Settings.YML Directly'){
             steps{
                 script{
                     // TODO: temporary logic pending #45 gets merged in and all
-                    sh "curl https://raw.githubusercontent.com/irishgordo/ipxe-examples/feat/2096-air-gapped-rancher-single-node-proof-of-concept/vagrant-pxe-harvester/settings.yml > /tmp/inital_settings.yml"
-                    // if (params.settings_yaml_url_override != 'DEFAULT'){
-                    //     sh "curl ${params['settings_yaml_url_override']} > /tmp/inital_settings.yml"
-                    // }else{
-                    //     sh "curl https://raw.githubusercontent.com/harvester/ipxe-examples/main/vagrant-pxe-harvester/settings.yml > /tmp/inital_settings.yml"
-                    // }
+                    if (ghprbCommentBody?.trim()){
+                        sh "curl https://raw.githubusercontent.com/irishgordo/ipxe-examples/feat/2096-air-gapped-rancher-single-node-proof-of-concept/vagrant-pxe-airgap-harvester/settings.yml > /tmp/inital_settings.yml"
+                    } else{
+                        if (params.settings_yaml_url_override != 'DEFAULT'){
+                            sh "curl ${params['settings_yaml_url_override']} > /tmp/inital_settings.yml"
+                        }else{
+                            sh "curl https://raw.githubusercontent.com/harvester/ipxe-examples/main/vagrant-pxe-airgap-harvester/settings.yml > /tmp/inital_settings.yml"
+                        }
+                    }
                 }
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
-                //     publishChecks name: 'example', title: 'Pipeline Check', summary: 'check through pipeline',
-                //         text: 'you can publish checks in pipeline script',
-                //         detailsURL: 'https://github.com/jenkinsci/checks-api-plugin#pipeline-usage',
-                //         actions: [[label:'an-user-request-action', description:'actions allow users to request pre-defined behaviours', identifier:'an unique identifier']]
-                        // sh '''
-                        // curl -X POST -H "Content-Type: application/json" \
-                        //     -H "Accept: application/vnd.github.antiope-preview+json" \
-                        //     -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN}" \
-                        //     -d '{ "name": "pull_initial_yaml_settings_for_vagrant_installer", \
-                        //         "head_sha": "'${ghprbActualCommit}'", \
-                        //         "status": "completed", \
-                        //         "conclusion": "success", \
-                        //         "output": { "title": "Pulled down inital yaml settings from ipxe-examples for: '${ghprbActualCommit}'", \
-                        //                     "summary": "Pulled down the settings.yml and will overwrite if needed to change versions etc.: '${env.WORKSPACE}'", \
-                        //                     "text": "inital yaml settings pulled down completed"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                        // '''
-//                }
+                withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                    TellGitHubToCreateACheck('pulled_inital_yaml_settings_for_vagrant_installer', 'pulled down the base settings for the harvester installer vagrant-pxe-airgap-harvester', 'completed', 'success', "we've pulled down the settings.yml and will override them if necessary... ", "${GITHUB_ACCESS_TOKEN}")
+                }     
             }
         }
         stage('Read Parameters, Override YAML If Needed'){
@@ -262,23 +210,10 @@ pipeline {
                     def result = writeYaml file: '/tmp/inital_settings.yml', data: baseSettingsYaml, overwrite: true
                     sh "echo 'YAML settings for this CI run is as follows, after overwriting if needed:'"
                     print baseSettingsYaml
+                    withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                        TellGitHubToCreateACheck('read_params_overwrite_base_settings_yaml_stage', 'params have been read, overwritten or adjusted - if needed for params and settings.yml', 'completed', 'success', "${baseSettingsYaml}", "${GITHUB_ACCESS_TOKEN}")
+                    } 
                 }       
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_C',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_C')]) {
-                //         sh '''
-                //         curl -X POST -H "Content-Type: application/json" \
-                //             -H "Accept: application/vnd.github.antiope-preview+json" \
-                //             -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_C}" \
-                //             -d '{ "name": "base_settings_yaml_adjusted", \
-                //                 "head_sha": "'${ghprbActualCommit}'", \
-                //                 "status": "completed", \
-                //                 "conclusion": "success", \
-                //                 "output": { "title": "base settings yaml has been adjusted for: '${ghprbActualCommit}'", \
-                //                             "summary": "base settings yaml has been adjusted either by GitOps or manual rebuild in Jenkins for: '${env.WORKSPACE}'", \
-                //                             "text": "'${baseSettingsYaml}'"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                //         '''
-                // } 
             }
         }
         stage("Grab Tests Repo And Prepare CI E2E Image"){
@@ -309,70 +244,13 @@ pipeline {
                     //     }
                     // }
                 }
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_D',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_D')]) {
-                //         sh '''
-                //         curl -X POST -H "Content-Type: application/json" \
-                //             -H "Accept: application/vnd.github.antiope-preview+json" \
-                //             -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_D}" \
-                //             -d '{ "name": "built_docker_file", \
-                //                 "head_sha": "'${ghprbActualCommit}'", \
-                //                 "status": "completed", \
-                //                 "conclusion": "success", \
-                //                 "output": { "title": "Harvester/Tests Dockerfile Has Been Built For: '${ghprbActualCommit}'", \
-                //                             "summary": "The Dockerfile that runs our harvester/tests repo has been built: '${env.WORKSPACE}'", \
-                //                             "text": "we used: https://github.com/irishgordo/tests - at branch: feat/2096-Supporting-E2E-CI-Work-For-Harvester-Installer - for building the Dockerfile, if desired you can run this with your own fork of the tests repo and branch"}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                //         '''
-                // }
             }
         }
-        // stage("Acquire Harvester Installer - TEMPORARY STAGE TESTING ONLY PoC"){
-        //     steps{
-        //         script{
-        //             dir("${params['WORKSPACE']}"){
-        //                 sh "git clone https://github.com/irishgordo/harvester-installer.git && cd harvester-installer && git checkout feat/2096-temporary-edits-testing"
-        //             }
-        //         }
-        //     }
-        // }
         stage('Test harvester-installer pull request') {
             steps {
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_E',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_E')]) {
-                //     sh '''
-                //     curl -X POST -H "Content-Type: application/json" \
-                //         -H "Accept: application/vnd.github.antiope-preview+json" \
-                //         -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_E}" \
-                //         -d '{ "name": "long_provisioning_stage_start", \
-                //             "head_sha": "'${ghprbActualCommit}'", \
-                //             "status": "completed", \
-                //             "conclusion": "success", \
-                //             "output": { "title": "Finally Begining Provisioning For: '${ghprbActualCommit}'", \
-                //                         "summary": "Begining Provisioning...: '${env.WORKSPACE}'", \
-                //                         "text": "begining provisioning..."}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                //     '''
-                // }
                 script {
                     ansiblePlaybook extras: "-e WORKSPACE=${env.WORKSPACE} -e PR_ID=${ghprbPullId}", playbook: "${env.WORKSPACE}/harvester-installer/ci/run_vagrant_install_test.yml"
                 }
-                // withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester',
-                //                                 usernameVariable: 'GITHUB_APP_F',
-                //                                 passwordVariable: 'GITHUB_ACCESS_TOKEN_F')]) {
-                //     sh '''
-                //     curl -X POST -H "Content-Type: application/json" \
-                //         -H "Accept: application/vnd.github.antiope-preview+json" \
-                //         -H "authorization: Bearer ${GITHUB_ACCESS_TOKEN_F}" \
-                //         -d '{ "name": "long_provisioning_stage_finished", \
-                //             "head_sha": "'${ghprbActualCommit}'", \
-                //             "status": "completed", \
-                //             "conclusion": "success", \
-                //             "output": { "title": "Finally Finished Provisioning For: '${ghprbActualCommit}'", \
-                //                         "summary": "Finished Provisioning...: '${env.WORKSPACE}'", \
-                //                         "text": "finished provisioning..."}}' https://api.github.com/repos/irishgordo/harvester-installer/check-runs
-                //     '''
-                // }
             }
         }
         stage('Test Harvester API'){
@@ -402,19 +280,22 @@ pipeline {
                             sh "ls -alh"
                             def baseSettingsYaml = readYaml file: '/tmp/inital_settings.yml'
                             print baseSettingsYaml
-                            // TODO: Fix! Some tests are breaking...but pending those tests being fixed tenitively
-                            // TODO: Terraform, the way we load the binary doesn't seem to work for this pipeline... debug/troubleshooting needed to figure it out 
-                            // TODO: Ignored tests are hardcoded - not very resilient to if the name change of tests took place, but pipeline interation can take place so hopefully minimizes impact 
+                            // TODO: Fix! Some tests are breaking... these tests are ignored in harvester-e2e-tests/apis:
+                            // - verify_host_maintenance_mode 
+                            // - host_mgmt_maintenance_mode 
+                            // - host_reboot_maintenance_mode 
+                            // - host_poweroff_state 
+                            // - create_images_using_terraform 
+                            // - create_keypairs_using_terraform 
+                            // - create_edit_network 
+                            // - create_network_using_terraform 
+                            // - create_volume_using_terraform
                             sh "cd tests && pytest -k 'not verify_host_maintenance_mode and not host_mgmt_maintenance_mode and not host_reboot_maintenance_mode and not host_poweroff_state and not create_images_using_terraform and not create_keypairs_using_terraform and not create_edit_network and not create_network_using_terraform and not create_volume_using_terraform' --junitxml=result_harvester_api_latest.xml -m 'not delete_host' harvester_e2e_tests/apis --username ${baseSettingsYaml.harvester_dashboard.admin_user} --password ${baseSettingsYaml.harvester_dashboard.admin_password} --endpoint https://${baseSettingsYaml.harvester_network_config.vip.ip} --harvester_cluster_nodes ${baseSettingsYaml.harvester_cluster_nodes}"
                         }
                     } catch (err) {
                         echo "failed within docker image inside command on harvester testing api stage"
                         echo err.getMessage()
                     }
-                }
-                withChecks('Harvester API Tests'){
-                    junit checksName: 'harvester-api-tests', testResults: 'tests/result_harvester_api_latest.xml'
-                    //junit 'tests/result_harvester_api_latest.xml'
                 }
             }
         }
@@ -455,9 +336,7 @@ pipeline {
                     }
                     
                 }
-                withChecks('Harvester Integration Tests With Rancher'){
-                    junit 'tests/result_harvester_rancher_integration_latest.xml'
-                }
+                
             }
         }        
     }
@@ -465,24 +344,121 @@ pipeline {
         // Clean after build
         always {
             dir("${env.WORKSPACE}"){
-                // script{
-                //     try{
-                //         junit 'tests/result_harvester_api_latest.xml'
-                //     } catch(err) {
-                //         echo err.getMessage()
-                //     }
-                //     try{
-                //         junit 'tests/result_harvester_rancher_integration_latest.xml'
-                //     } catch(err) {
-                //         echo err.getMessage()
-                //     }
-                //     // try{
-                //     //     sh "echo '' > /var/lib/jenkins/.ssh/known_hosts"
-                //     // } catch(err) {
-                //     //     echo err.getMessage()                    
-                //     // }
-                // }
-                sh "cd ipxe-examples/vagrant-pxe-harvester/ && ls -alh && vagrant destroy -f"
+                script{
+                    try{
+                        // TODO: We don't want to publish this way: https://plugins.jenkins.io/junit/#plugin-content-test-result-checks-for-github-projects
+                        // Only because we would need to entirely work how our pipelines are set up
+                        // we would need to instead of having just 'two' pipeline jobs, we'd need to nest the jobs
+                        // in a GitHub Org and then create a GitHub Org for Harvester - only bringing in the Harvester repo
+                        // yet, running a project under the GitHub Org it seemed to not entirely respect pipeline triggers - as well as, the seeder, would
+                        // exist within the GitHub org, seeding/re-seeding pipeline changes, but the actual pipeline, there were some initial issues figuring out how
+                        // to get that into the GitHub org, so this was timeboxed, test results will be sent manually via the API call with the GitHub App Credential
+                        // instead of using junit's builtin for now, until we can get more cycles to figure out how to take advantage of the default junit builtin
+                        junit allowEmptyResults: true, skipPublishingChecks: true, keepLongStdio: true, testResults: 'tests/result_harvester_api_latest.xml'
+                        testResultAction =  currentBuild.rawBuild.getAction(hudson.tasks.test.AggregatedTestResultAction.class);
+                        if (testResultAction == null) {
+                            println("No tests")
+                            return
+                        }
+
+                        childReports = testResultAction.getChildReports();
+
+                        if (childReports == null || childReports.size() == 0) {
+                            println("No child reports")
+                            return
+                        }
+
+                        def failures = [:]
+                        childReports.each { report ->
+                            def result = report.result;
+
+                            if (result == null) {
+                                println("null result from child report")
+                            }
+                            else if (result.failCount < 1) {
+                                println("result has no failures")
+                            }
+                            else {
+                                println("overall fail count: ${result.failCount}")
+                                failedTests = result.getFailedTests();
+
+                                failedTests.each { test ->
+                                    failures.put(test.fullDisplayName, test)
+                                    println("Failed test: ${test.fullDisplayName}\n" +
+                                            "name: ${test.name}\n" +
+                                            "age: ${test.age}\n" +
+                                            "failCount: ${test.failCount}\n" +
+                                            "failedSince: ${test.failedSince}\n" +
+                                            "errorDetails: ${test.errorDetails}\n")
+                                }
+                            }
+                        }
+                        def passes = [:]
+                        childReports.each { report ->
+                            def result = report.result;
+
+                            if (result == null) {
+                                println("null result from child report")
+                            }
+                            else {
+                                println("overall pass count: ${result.passCount}")
+                                passedTests = result.getPassedTests();
+
+                                passedTests.each { test ->
+                                    passes.put(test.fullDisplayName, test)
+                                }
+                            }
+                        }
+                        def subject = "testing..."
+                        // TODO: see if there's a tangible fix for this...
+                        // def testResult = build.testResultAction
+                        // def didTestsPass = 0
+                        // if ( testResult != null ) {
+                        //     def testsTotal = testResult.totalCount
+                        //     def testsFailed = testResult.failCount
+                        //     didTestsPass = testResult.failCount
+                        //     def testsSkipped = testResult.skipCount
+                        //     def testsPassed = testsTotal - testsFailed - testsSkipped
+
+                        //     subject = build.externalizableId + " : Tests passed " + testsPassed + ", out of " + testsTotal
+                            
+                        // }
+                        if(didTestsPass == 0) {
+                            withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                                TellGitHubToCreateACheck('post_stage_test_api_results', 'Subject: ' + subject, 'completed', 'success', "${passes.toMapString()} \n ${failures.toMapString()}", "${GITHUB_ACCESS_TOKEN}")
+                            } 
+                        }
+                        else{
+                            withCredentials([usernamePassword(credentialsId: 'jenkins-irishgordo-team-harvester', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_ACCESS_TOKEN')]) {
+                                TellGitHubToCreateACheck('post_stage_test_api_results', 'Subject: ' + subject, 'completed', 'success', "${passes.toMapString()} \n ${failures.toMapString()}", "${GITHUB_ACCESS_TOKEN}")
+                            } 
+                        }
+                    } catch(err) {
+                        echo err.getMessage()
+                    }
+                    try{
+                        // TODO: We don't want to publish this way: https://plugins.jenkins.io/junit/#plugin-content-test-result-checks-for-github-projects
+                        // Only because we would need to entirely work how our pipelines are set up
+                        // we would need to instead of having just 'two' pipeline jobs, we'd need to nest the jobs
+                        // in a GitHub Org and then create a GitHub Org for Harvester - only bringing in the Harvester repo
+                        // yet, running a project under the GitHub Org it seemed to not entirely respect pipeline triggers - as well as, the seeder, would
+                        // exist within the GitHub org, seeding/re-seeding pipeline changes, but the actual pipeline, there were some initial issues figuring out how
+                        // to get that into the GitHub org, so this was timeboxed, test results will be sent manually via the API call with the GitHub App Credential
+                        // instead of using junit's builtin for now, until we can get more cycles to figure out how to take advantage of the default junit builtin
+                        junit skipPublishingChecks: true, testResults: 'tests/result_harvester_rancher_integration_latest.xml'
+                    } catch(err) {
+                        echo err.getMessage()
+                    }
+                    // TODO: May not be needed anymore tbd...
+                    // try{
+                    //     sh "echo '' > /var/lib/jenkins/.ssh/known_hosts"
+                    // } catch(err) {
+                    //     echo err.getMessage()                    
+                    // }
+                }
+                // We clean up things here in the pipeline, since prior, usually the cleanup would happen in the run_vagrant_install_test.yml
+                // But if we had cleaned up then, the VMs would of disappeared and there would be no systems to test under
+                sh "cd ipxe-examples/vagrant-pxe-airgap-harvester/ && ls -alh && vagrant destroy -f"
                 sh "cd ${env.WORKSPACE}/tests && make destroy-docker-e2e-ci-image"
                 sh "cd ${env.WORKSPACE} && rm -rfv tests"
                 deleteDir()

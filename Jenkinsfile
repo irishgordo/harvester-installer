@@ -11,7 +11,6 @@ node {
         }
     }
     stage('Attempt deploy of seed..'){
-        checkout scm
         script{
             jobDsl targets: ['jobs/ci_cd_job.groovy'].join('\n'),
                 removedJobAction: 'IGNORE',

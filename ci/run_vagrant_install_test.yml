@@ -33,28 +33,29 @@
       register: shell_result
       until: shell_result.rc == 0
 
-    # - name: Check for existing environment
-    #   stat:
-    #     path: "{{ WORKSPACE }}/ipxe-examples"
-    #   register: check_ipxe_examples_result
+    - name: Check for existing environment
+      stat:
+        path: "{{ WORKSPACE }}/ipxe-examples"
+      register: check_ipxe_examples_result
 
-    # - name: Cleanup vagrants
-    #   shell: >
-    #     vagrant destroy -f
-    #   args:
-    #     chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
-    #   when: check_ipxe_examples_result.stat.exists
+    - name: Cleanup vagrants
+      shell: >
+        vagrant destroy -f
+      args:
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester"
+      when: check_ipxe_examples_result.stat.exists
 
-    # - name: Cleanup ipxe-examples dir
-    #   file:
-    #     path: "{{ WORKSPACE }}/ipxe-examples"
-    #     state: absent
+    - name: Cleanup ipxe-examples dir
+      file:
+        path: "{{ WORKSPACE }}/ipxe-examples"
+        state: absent
 
     - name: Clone ipxe-examples repo
       git:
         repo: https://github.com/irishgordo/ipxe-examples.git
         dest: "{{ WORKSPACE }}/ipxe-examples"
     
+    # TODO: REMOVE! Temporary for wiring
     - name: Checkout 2096 Branch
       shell: cd {{ WORKSPACE }}/ipxe-examples && git checkout feat/2096-air-gapped-rancher-single-node-proof-of-concept
 
@@ -65,39 +66,39 @@
 
     - name: Remove OVMF.fd line if needed
       lineinfile:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/Vagrantfile"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/Vagrantfile"
         regexp: '.*\/OVMF\.fd.*'
         state: absent
       when: not file_ovmf_fd_check_result.stat.exists
 
     - name: Set harvester_iso_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_iso_url:.*"
         replace: "harvester_iso_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-amd64.iso"
 
     - name: Set harvester_kernel_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_kernel_url:.*"
         replace: "harvester_kernel_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-vmlinuz-amd64"
 
     - name: Set harvester_ramdisk_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_ramdisk_url:.*"
         replace: "harvester_ramdisk_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-initrd-amd64"
 
     - name: Set harvester_rootfs_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_rootfs_url:.*"
         replace: "harvester_rootfs_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-rootfs-amd64.squashfs"
 
     - name: Copy Temp Inital Settings Overwriting
       copy:
         src: /tmp/inital_settings.yml
-        dest: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        dest: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         force: yes
 
     - name: Run setup Harvester
@@ -105,13 +106,15 @@
         ./setup_harvester.sh
       register: setup_harvester_result
       args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester"
 
     - name: Print Harvester installation output
       debug:
         msg: "{{ setup_harvester_result.stdout_lines }}"
       ignore_errors: yes
 
+    # TODO: Remove code comment, we don't want to destroy the VMs until we can 
+    # test on the VMs
     # - name: Cleanup Harvester Vagrant VMs
     #   shell: >
     #     vagrant destroy -f
