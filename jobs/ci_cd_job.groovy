@@ -35,19 +35,19 @@ pipelineJob('harvester-vagrant-installation-test') {
         stringParam('tests_repo_url', 'DEFAULT', 'overrides the default test repo for e2e tests')
         stringParam('tests_repo_branch', 'DEFAULT', 'overrides the default test repo branch for e2e tests')
     }
-    // definition {
-    //     cpsScm {
-    //         scm {
-    //             git {
-    //                 remote {
-    //                     url('https://github.com/irishgordo/harvester-installer.git')
-    //                     refspec('+refs/pull/*:refs/remotes/origin/pr/*')
-    //                 }
-    //                 branch('${sha1}')
-    //             }
-    //         }
-    //     }
-    // }
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url('https://github.com/irishgordo/harvester-installer.git')
+                        refspec('+refs/pull/*:refs/remotes/origin/pr/*')
+                    }
+                    branch('${sha1}')
+                }
+            }
+        }
+    }
     triggers {
         githubPullRequest {
             admin('irishgordo')

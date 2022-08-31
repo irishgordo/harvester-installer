@@ -14,11 +14,11 @@ node {
         checkout scm
         script{
             jobDsl targets: ['jobs/ci_cd_job.groovy'].join('\n'),
-                removedJobAction: 'DELETE',
-                removedViewAction: 'DELETE',
-                removedConfigFilesAction: 'DELETE',
-                lookupStrategy: 'SEED_JOB',
-                additionalParameters: [:].
+                removedJobAction: 'IGNORE',
+                removedViewAction: 'IGNORE',
+                removedConfigFilesAction: 'IGNORE',
+                lookupStrategy: 'JENKINS_ROOT',
+                additionalParameters: [:],
                 sandbox: true
         }
     }
