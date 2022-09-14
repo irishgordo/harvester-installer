@@ -42,7 +42,7 @@
       shell: >
         vagrant destroy -f
       args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester"
       when: check_ipxe_examples_result.stat.exists
 
     - name: Cleanup ipxe-examples dir
@@ -52,8 +52,12 @@
 
     - name: Clone ipxe-examples repo
       git:
-        repo: https://github.com/harvester/ipxe-examples.git
+        repo: https://github.com/irishgordo/ipxe-examples.git
         dest: "{{ WORKSPACE }}/ipxe-examples"
+    
+    # TODO: REMOVE! Temporary for wiring
+    - name: Checkout 2096 Branch
+      shell: cd {{ WORKSPACE }}/ipxe-examples && git checkout feat/2096-air-gapped-rancher-single-node-proof-of-concept
 
     - name: Check to see if "/usr/share/qemu/OVMF.fd" exist
       stat:
@@ -62,54 +66,65 @@
 
     - name: Remove OVMF.fd line if needed
       lineinfile:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/Vagrantfile"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/Vagrantfile"
         regexp: '.*\/OVMF\.fd.*'
         state: absent
       when: not file_ovmf_fd_check_result.stat.exists
 
     - name: Set harvester_iso_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_iso_url:.*"
         replace: "harvester_iso_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-amd64.iso"
 
     - name: Set harvester_kernel_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_kernel_url:.*"
         replace: "harvester_kernel_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-vmlinuz-amd64"
 
     - name: Set harvester_ramdisk_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_ramdisk_url:.*"
         replace: "harvester_ramdisk_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-initrd-amd64"
 
     - name: Set harvester_rootfs_url
       replace:
-        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester/settings.yml"
+        path: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
         regexp: "^harvester_rootfs_url:.*"
         replace: "harvester_rootfs_url: file://{{ WORKSPACE }}/harvester-installer/dist/artifacts/harvester-master-rootfs-amd64.squashfs"
+
+    - name: Copy Temp Inital Settings Overwriting
+      copy:
+        src: /tmp/inital_settings.yml
+        dest: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester/settings.yml"
+        force: yes
 
     - name: Run setup Harvester
       shell: >
         ./setup_harvester.sh
       register: setup_harvester_result
       args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
-      ignore_errors: yes
+        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-airgap-harvester"
 
     - name: Print Harvester installation output
       debug:
         msg: "{{ setup_harvester_result.stdout_lines }}"
+      ignore_errors: yes
 
-    - name: Cleanup Harvester Vagrant VMs
-      shell: >
-        vagrant destroy -f
-      args:
-        chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
+    # TODO: Remove code comment, we don't want to destroy the VMs until we can 
+    # test on the VMs
+    # - name: Cleanup Harvester Vagrant VMs
+    #   shell: >
+    #     vagrant destroy -f
+    #   args:
+    #     chdir: "{{ WORKSPACE }}/ipxe-examples/vagrant-pxe-harvester"
 
+    # temporarily ignoring errors 
+    # warnings get put in stderr, when they are just "warnings" and not "errors"
     - name: Check result
       fail:
         msg: "ERROR: {{ setup_harvester_result.stderr }}"
       when: setup_harvester_result.failed
+      ignore_errors: yes
