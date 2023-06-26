@@ -55,6 +55,9 @@ func newProxyClient() http.Client {
 	return http.Client{
 		Timeout: defaultHTTPTimeout,
 		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
 			Proxy: proxyFromEnvironment,
 		},
 	}
