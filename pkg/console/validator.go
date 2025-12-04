@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -211,6 +212,14 @@ func checkIPList(ipList []string) error {
 }
 
 func checkNetworks(network config.Network, dnsServers []string) error {
+	// hack vlan id string
+	if network.VlanIDString != "" {
+		result, error := strconv.ParseInt(network.VlanIDString, 0, 0)
+		if error != nil {
+			return errors.New("couldnt parse string of vlan string")
+		}
+		network.VlanID = int(result)
+	}
 	if len(network.Interfaces) == 0 {
 		return errors.New(ErrMsgInterfaceNotSpecifiedForMgmt)
 	}
@@ -367,6 +376,16 @@ func checkSystemSettings(systemSettings map[string]string) error {
 func (v ConfigValidator) Validate(cfg *config.HarvesterConfig) error {
 	if cfg.SchemeVersion != config.SchemeVersion {
 		return fmt.Errorf(ErrMsgUnsupportedSchemeVersion, cfg.SchemeVersion)
+	}
+	// hack seed interface name for managementinterface
+	fmt.Printf("checking if boot param, kernel param of string interface for management exists...")
+	if cfg.InterfacesStringHackName != "" {
+		fmt.Printf("hacking at the management interface name...")
+		fmt.Printf("name to be used: %v", cfg.InterfacesStringHackName)
+		var hackNetworkInterfaces config.NetworkInterface
+		hackNetworkInterfaces.Name = cfg.InterfacesStringHackName
+		cfg.Install.ManagementInterface.Interfaces = append(cfg.Install.ManagementInterface.Interfaces, hackNetworkInterfaces)
+		fmt.Printf("appended hacked network interface name to string list...")
 	}
 
 	// check hostname

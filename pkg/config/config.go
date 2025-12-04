@@ -91,6 +91,8 @@ type Network struct {
 	BondOptions  map[string]string  `json:"bondOptions,omitempty"`
 	MTU          int                `json:"mtu,omitempty"`
 	VlanID       int                `json:"vlanId,omitempty"`
+	// hack
+	VlanIDString string `json:"vlanIdString,omitempty"`
 }
 
 type NTPSettings struct {
@@ -148,6 +150,8 @@ type Install struct {
 	SkipChecks          bool    `json:"skipchecks,omitempty"`
 	Mode                string  `json:"mode,omitempty"`
 	ManagementInterface Network `json:"managementInterface,omitempty"`
+	// hack
+	InterfacesStringHackName string `json:"interfacesStringHackName,omitempty"`
 
 	Vip       string `json:"vip,omitempty"`
 	VipHwAddr string `json:"vipHwAddr,omitempty"`
@@ -325,7 +329,7 @@ type HarvesterConfig struct {
 }
 
 func NewHarvesterConfig() *HarvesterConfig {
-	return &HarvesterConfig{}
+	return &HarvesterConfig{SchemeVersion: 1}
 }
 
 func (c *HarvesterConfig) DeepCopy() (*HarvesterConfig, error) {
